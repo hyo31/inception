@@ -1,42 +1,63 @@
 version: '3'
 services:
-  db:
-    image: mysql:8.0
-    container_name: db
-    restart: unless-stopped
-    command: '--default-authentication-plugin=mysql_native_password'
-    env_file: .env
-    environment:
-      - MYSQL_DATABASE=wordpress
-    volumes:                                                                                        
-      - dbdata:/var/lib/mysql
-  wordpress:
-    image: wordpress:5-fpm-alpine
-    depends_on:
-      - db
-    container_name: wordpress
-    restart: unless-stopped
-    volumes:                                                                                        
-      - wordpress:/var/www/html                                                                     
-      # - /myTheme/:/var/www/html/wp-content/themes/myTheme
-    env_file: .env
-    environment:
-      - WORDPRESS_DB_HOST=db:3306
-      - WORDPRESS_DB_USER=$MYSQL_USER
-      - WORDPRESS_DB_PASSWORD=$MYSQL_PASSWORD
-      - WORDPRESS_DB_NAME=wordpress
-  webserver:
+
+  nginx:
+    build: requirements/nginx/
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "~/Desktop/inception/website:/var/www/html"
     depends_on:
       - wordpress
-    image: nginx:1.15.12-alpine
-    container_name: webserver
-    restart: unless-stopped
-    ports:
-      - "80:80"  
-      - "443:443"
-    volumes:                                                                                        
-      - wordpress:/var/www/html                                                                     
-      - /nginx-conf/:/etc/nginx/conf.d
-volumes:
+    networks:
+      - frontend
+    restart: always
+
   wordpress:
-  dbdata:
+    build: requirements/wordpress/
+    container_name: wordpress
+    ports:
+      - "9000:9000"
+    volumes:
+      - "~/Desktop/inception/website:/var/www/html"
+    depends_on:
+      - mariadb
+    networks:
+      - frontend
+      - backend
+    restart: always
+    environment:
+      MYSQL_HOST:       ${MYSQL_HOST}
+      WP_DATABASE_NAME: ${WP_DATABASE_NAME}
+      WP_DATABASE_USR:  ${WP_DATABASE_USR}
+      WP_DATABASE_PWD:  ${WP_DATABASE_PWD}
+      DOMAIN_NAME:      ${DOMAIN_NAME}
+      WP_TITLE:         ${WP_TITLE}
+      WP_ADMIN_USR:     ${WP_ADMIN_USR}
+      WP_ADMIN_PWD:     ${WP_ADMIN_PWD}
+      WP_ADMIN_EMAIL:   ${WP_ADMIN_EMAIL}
+      WP_USR:           ${WP_USR}
+      WP_PWD:           ${WP_PWD}
+      WP_EMAIL:         ${WP_EMAIL}
+
+  mariadb:
+    build: requirements/mariadb/
+    container_name: mariadb
+    ports:
+      - "3306:3306"
+    volumes:
+      - "~/Desktop/inception/mariadb:/var/lib/mysql"
+    networks:
+      - backend
+    restart: always
+    environment:
+      MYSQL_ROOT_PWD:   ${MYSQL_ROOT_PWD}
+      WP_DATABASE_NAME: ${WP_DATABASE_NAME}
+      WP_DATABASE_USR:  ${WP_DATABASE_USR}
+      WP_DATABASE_PWD:  ${WP_DATABASE_PWD}
+
+networks:
+  frontend:
+  backend:
